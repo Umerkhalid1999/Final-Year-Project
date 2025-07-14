@@ -78,6 +78,14 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
+        // Check if Firebase is ready before proceeding
+        if (!window.firebaseReady || !window.firebaseAuth) {
+            errorAlert.textContent = 'Authentication system is still loading. Please wait a moment and try again.';
+            errorAlert.classList.remove('d-none');
+            errorAlert.classList.add('alert-warning');
+            return;
+        }
+
         // Get Firebase auth from the global variable
         const auth = window.firebaseAuth.auth;
         const email = emailInput.value;

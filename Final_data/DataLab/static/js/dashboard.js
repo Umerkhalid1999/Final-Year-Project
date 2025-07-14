@@ -102,17 +102,27 @@ function initializeTheme() {
     }
 }
 
-// Check authentication state
+// Check authentication state (only for dashboard-specific logic)
 function checkAuthState() {
-    if (window.firebaseAuth) {
+    if (window.firebaseAuth && window.firebaseReady) {
         window.firebaseAuth.onAuthStateChanged(window.firebaseAuth.auth, (user) => {
             if (!user) {
-                // Redirect to login if not authenticated
-                window.location.href = "/login";
+                // Only redirect if we're on a protected page and base.html hasn't already handled it
+                const currentPath = window.location.pathname;
+                if (currentPath.startsWith('/dashboard') || currentPath.startsWith('/data_')) {
+                    console.log("Dashboard: User not authenticated, redirecting to login");
+                    window.location.href = "/login";
+                }
+            } else {
+                console.log("Dashboard: User authenticated");
             }
         });
-    } else {
+    } else if (!window.firebaseAuth) {
         console.error("Firebase Auth not initialized");
+    } else {
+        // Wait for Firebase to be ready
+        console.log("Dashboard: Waiting for Firebase to be ready...");
+        setTimeout(checkAuthState, 100);
     }
 }
 
