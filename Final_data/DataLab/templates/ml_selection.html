@@ -158,6 +158,12 @@
         </div>
     </div>
 
+    <!-- Floating JupyterLite Button -->
+    <div id="jupyterButton" class="floating-jupyter-btn" onclick="openJupyterLite()" title="Open Python Notebook Environment">
+        <i class="fas fa-code"></i>
+        <span>Jupyter</span>
+    </div>
+
     <!-- Hyperparameter Tuning Modal -->
     <div id="tuningModal" class="modal hidden">
         <div class="modal-content">
@@ -236,6 +242,23 @@
             updateNavStatus('Error: ' + error.message, 'error');
             showError('Analysis failed: ' + error.message);
         });
+    }
+
+    // Open JupyterLite function
+    function openJupyterLite() {
+        try {
+            const jupyterWindow = window.open('/ml/jupyterlite', '_blank', 'width=1200,height=800,resizable=yes,scrollbars=yes');
+            
+            if (jupyterWindow) {
+                jupyterWindow.focus();
+                showNotification('JupyterLite opened! Upload your downloaded notebooks to start coding.', 'success');
+            } else {
+                showNotification('Please allow popups to open JupyterLite, or click "Python Notebook" in the sidebar.', 'warning');
+            }
+        } catch (error) {
+            console.error('Error opening JupyterLite:', error);
+            showNotification('Click "Python Notebook" in the sidebar to open JupyterLite.', 'info');
+        }
     }
 
     // Helper functions for status updates

@@ -624,10 +624,44 @@ async function finalizeModel(modelName) {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
         
-        // Open JupyterLite in new tab
-        const jupyterWindow = window.open('/jupyterlite', '_blank');
+        // Open JupyterLite in new tab with better handling
+        try {
+            const jupyterWindow = window.open('/ml/jupyterlite', '_blank', 'width=1200,height=800,resizable=yes,scrollbars=yes');
+            
+            if (jupyterWindow) {
+                // Focus the new window
+                jupyterWindow.focus();
+                showNotification(`${modelName} notebook downloaded! JupyterLite opened - upload the notebook to start coding.`, 'success');
+            } else {
+                // Popup was blocked
+                showNotification(`${modelName} notebook downloaded! Please allow popups and click here to open JupyterLite.`, 'warning');
+                
+                // Add a click handler to try again
+                setTimeout(() => {
+                    const notification = document.querySelector('.notification:last-child');
+                    if (notification) {
+                        notification.style.cursor = 'pointer';
+                        notification.onclick = () => {
+                            window.open('/ml/jupyterlite', '_blank');
+                            notification.remove();
+                        };
+                    }
+                }, 100);
+            }
+        } catch (error) {
+            console.error('Error opening JupyterLite:', error);
+            showNotification(`${modelName} notebook downloaded! Click "Python Notebook" in the sidebar to open JupyterLite.`, 'info');
+        }
         
-        showNotification(`${modelName} notebook exported and JupyterLite opened!`, 'success');
+        // Store notebook info for easy access
+        if (typeof(Storage) !== "undefined") {
+            localStorage.setItem('datalab_latest_notebook', JSON.stringify({
+                filename: data.filename,
+                model_name: modelName,
+                created_at: new Date().toISOString(),
+                content: data.notebook_content
+            }));
+        }
         
     } catch (error) {
         showNotification('Error exporting notebook: ' + error.message, 'error');
