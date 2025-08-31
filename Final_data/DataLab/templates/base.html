@@ -134,22 +134,8 @@
         onAuthStateChanged(auth, (user) => {
             console.log("Auth state changed:", user ? "User signed in" : "No user signed in");
             
-            // Don't redirect on auth pages to prevent loops
-            const currentPath = window.location.pathname;
-            const authPages = ['/login', '/signup', '/forgot-password', '/reset-password', '/'];
-            
-            if (user && authPages.includes(currentPath)) {
-                console.log("User authenticated on auth page, redirecting to dashboard");
-                // Small delay to prevent immediate redirect conflicts
-                setTimeout(() => {
-                    window.location.href = '/dashboard';
-                }, 100);
-            } else if (!user && !authPages.includes(currentPath)) {
-                console.log("User not authenticated on protected page, redirecting to login");
-                setTimeout(() => {
-                    window.location.href = '/login';
-                }, 100);
-            }
+            // Don't auto-redirect - let the login form handle redirects
+            // This prevents conflicts with server-side session management
             
             // Mark Firebase as ready and hide loader
             window.firebaseReady = true;

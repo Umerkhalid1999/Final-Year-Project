@@ -11,10 +11,31 @@ import firebase_admin
 from firebase_admin import credentials, auth
 from flask_cors import CORS  # Add this import
 
+# Configure logging first
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('datalab.log'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
 # todo: Data preprocessing + routes implementation
-from pycaret.classification import *
-from pycaret.regression import *
-from pycaret.clustering import *
+try:
+    from pycaret.classification import *
+    from pycaret.regression import *
+    from pycaret.clustering import *
+    PYCARET_AVAILABLE = True
+    logger.info("PyCaret imported successfully")
+except ImportError as e:
+    logger.warning(f"PyCaret not available: {e}")
+    PYCARET_AVAILABLE = False
+except RuntimeError as e:
+    logger.warning(f"PyCaret runtime error: {e}")
+    PYCARET_AVAILABLE = False
+    
 import tempfile
 import shutil
 from sklearn.model_selection import train_test_split
@@ -28,18 +49,6 @@ from flask import (
     flash, session, jsonify, make_response
 )
 from werkzeug.utils import secure_filename
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('datalab.log'),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger(__name__)
-
 
 # Application Configuration
 class Config:
@@ -80,6 +89,55 @@ initialize_firebase()
 datasets = {}
 next_dataset_id = 1
 
+# Import and register ML routes
+try:
+    import sys
+    import os
+    
+    # Add current directory to Python path to fix import issues
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    if current_dir not in sys.path:
+        sys.path.insert(0, current_dir)
+    
+    from routes.ml_routes import ml_bp, set_datasets_reference
+    app.register_blueprint(ml_bp)
+    set_datasets_reference(datasets)
+    logger.info("ML routes registered successfully")
+except ImportError as e:
+    logger.warning(f"Could not import ML routes: {e}")
+    # Defer creating ML fallback until after decorators are defined
+    def _register_ml_fallback(app_ref):
+        @app_ref.route('/ml')
+        @login_required
+        def ml_fallback():
+            return "<h1>ML Module</h1><p>ML routes are temporarily unavailable. Please check the logs.</p>"
+    # Temporarily store a flag to register later
+    app.config['REGISTER_ML_FALLBACK'] = _register_ml_fallback
+except Exception as e:
+    logger.error(f"Error registering ML routes: {e}")
+
+# After login_required is defined, register any deferred fallbacks
+try:
+    register_cb = app.config.pop('REGISTER_ML_FALLBACK', None)
+    if callable(register_cb):
+        register_cb(app)
+        logger.info("Registered ML fallback route")
+except Exception as e:
+    logger.warning(f"Failed to register ML fallback route: {e}")
+
+# Feature Engineering module removed - to be implemented separately
+
+# Import and register Workflow Management routes
+try:
+    from routes.workflow_routes import workflow_bp, set_datasets_reference as set_workflow_datasets_reference
+    app.register_blueprint(workflow_bp)
+    set_workflow_datasets_reference(datasets)
+    logger.info("Workflow Management routes registered successfully")
+except ImportError as e:
+    logger.warning(f"Could not import Workflow Management routes: {e}")
+except Exception as e:
+    logger.error(f"Error registering Workflow Management routes: {e}")
+
 
 # Helper Functions
 def allowed_file(filename):
@@ -119,13 +177,16 @@ def verify_firebase_token(id_token):
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # Get the token from cookies
+        logger.info(f"🔒 login_required check for: {request.path}")
+        
+        # Get the token from cookies first
         token = request.cookies.get('token')
-        logger.info(f"login_required - Cookie token present: {token is not None}")
+        logger.info(f"🔑 Token present: {token is not None}")
 
         # If no token, redirect to login
         if not token:
-            logger.warning("No token in cookies, redirecting to login")
+            logger.warning(f"❌ No token in cookies for {request.path}")
+            session.clear()
             return redirect(url_for('login'))
 
         try:
@@ -133,28 +194,29 @@ def login_required(f):
             user_info = verify_firebase_token(token)
 
             if not user_info:
-                logger.warning("Token verification failed")
-                # Clear invalid token
+                logger.warning("❌ Token verification failed, clearing session")
+                session.clear()
                 response = make_response(redirect(url_for('login')))
-                response.set_cookie('token', '', expires=0)
+                response.set_cookie('token', '', expires=0, path='/')
                 return response
 
-            logger.info(f"User authenticated: {user_info['email']}")
-
-            # Set user info in session if not already there
-            if 'user_id' not in session or session['user_id'] != user_info['uid']:
-                logger.info(f"Setting session for user: {user_info['uid']}")
+            # Set or update session if needed
+            if 'user_id' not in session or session.get('user_id') != user_info['uid']:
+                logger.info(f"🔄 Setting session for user: {user_info['uid']}")
                 session['user_id'] = user_info['uid']
                 session['email'] = user_info['email']
-                session['username'] = user_info['display_name'] or user_info['email'].split('@')[0]
+                session['username'] = user_info.get('display_name') or user_info['email'].split('@')[0]
 
+            logger.info(f"✅ User authenticated: {user_info['email']}")
             return f(*args, **kwargs)
 
         except Exception as e:
-            logger.error(f"Authentication error: {str(e)}")
+            logger.error(f"❌ Authentication error: {str(e)}")
             # Clear session and redirect to login
             session.clear()
-            return redirect(url_for('login'))
+            response = make_response(redirect(url_for('login')))
+            response.set_cookie('token', '', expires=0, path='/')
+            return response
 
     return decorated_function
 
@@ -163,18 +225,33 @@ def login_required(f):
 @app.route('/')
 def index():
     """Main landing page"""
-    if 'user_id' in session:
-        return redirect(url_for('dashboard'))
+    logger.info("Index route accessed")
+    logger.info(f"Session data: {dict(session)}")
+    logger.info(f"Cookies: {dict(request.cookies)}")
+    
+    # Always redirect to login for now to force proper authentication
+    # This ensures clean authentication flow
     return redirect(url_for('login'))
 
 
 @app.route('/login')
 def login():
     """Login page"""
-    # If user is already logged in, redirect to dashboard
-    if 'user_id' in session:
-        return redirect(url_for('dashboard'))
+    logger.info("Login page accessed")
+    
+    # Check if user already has a valid session/token
+    token = request.cookies.get('token')
+    if token:
+        try:
+            user_info = verify_firebase_token(token)
+            if user_info:
+                logger.info(f"User already authenticated, redirecting to dashboard: {user_info['email']}")
+            return redirect(url_for('dashboard'))
+        except Exception as e:
+            logger.warning(f"Token verification failed: {e}")
 
+    # Only clear session if we're really showing the login page
+    session.clear()
     return render_template('login.html')
 
 
@@ -716,7 +793,9 @@ def create_session():
 
         # Set cookie with the token - use secure=False in development
         max_age = 3600  # 1 hour
-        response.set_cookie('token', id_token, max_age=max_age, httponly=True, secure=False, samesite='Strict')
+        response.set_cookie('token', id_token, max_age=max_age, httponly=True, secure=False, samesite='Lax', path='/')
+        
+        logger.info(f"Cookie set for user {user_info['uid']} with token length {len(id_token)}")
 
         return response
 
@@ -728,17 +807,66 @@ def create_session():
 @app.route('/logout')
 def logout():
     """User logout route"""
-    user_email = session.get('email')
+    logger.info("User logout initiated")
     session.clear()
-
-    if user_email:
-        logger.info(f"User {user_email} logged out")
-
-    # Create response that clears the token cookie
     response = make_response(redirect(url_for('login')))
-    response.set_cookie('token', '', expires=0)
-
+    # Clear all authentication cookies
+    response.set_cookie('token', '', expires=0, path='/')
+    response.set_cookie('session', '', expires=0, path='/')
     return response
+
+@app.route('/force-login')
+def force_login():
+    """Force clear all auth data and redirect to login"""
+    logger.info("Force login initiated")
+    session.clear()
+    response = make_response(redirect(url_for('login')))
+    # Clear all possible authentication cookies
+    response.set_cookie('token', '', expires=0, path='/')
+    response.set_cookie('session', '', expires=0, path='/')
+    response.set_cookie('user_id', '', expires=0, path='/')
+    return response
+
+@app.route('/debug-auth')
+def debug_auth():
+    """Debug authentication state"""
+    token = request.cookies.get('token')
+    session_data = dict(session)
+    
+    debug_info = {
+        "timestamp": datetime.now().isoformat(),
+        "has_token": bool(token),
+        "token_length": len(token) if token else 0,
+        "session_data": session_data,
+        "cookies": dict(request.cookies),
+        "user_id_in_session": 'user_id' in session,
+        "request_path": request.path,
+        "request_method": request.method
+    }
+    
+    if token:
+        try:
+            user_info = verify_firebase_token(token)
+            debug_info["token_valid"] = bool(user_info)
+            debug_info["user_info"] = user_info if user_info else None
+        except Exception as e:
+            debug_info["token_valid"] = False
+            debug_info["token_error"] = str(e)
+    else:
+        debug_info["token_valid"] = False
+        debug_info["token_error"] = "No token provided"
+    
+    return jsonify(debug_info)
+
+@app.route('/test-no-auth')
+def test_no_auth():
+    """Test route without authentication to verify login is required"""
+    return jsonify({
+        "message": "This route has no authentication",
+        "session": dict(session),
+        "cookies": dict(request.cookies),
+        "note": "If you can see this without logging in, there's a bypass issue"
+    })
 
 
 # Error Handlers
@@ -1535,6 +1663,32 @@ def get_dataset_info(dataset_id):
         logger.error(f"Error getting dataset info: {e}")
         return jsonify({"success": False, "message": str(e)}), 500
 
+# --- Alias for ML selection JS ---
+@app.route('/api/preview/<int:dataset_id>')
+@login_required
+def api_preview_dataset(dataset_id):
+    """Alias endpoint returning the same payload as get_dataset_info for backward compatibility."""
+    return get_dataset_info(dataset_id)
+
+# --- Test endpoints for debugging ---
+@app.route('/api/test/routes')
+@login_required
+def test_routes():
+    """Test endpoint to verify all routes are working"""
+    user_id = session['user_id']
+    user_datasets = datasets.get(user_id, [])
+    
+    return jsonify({
+        "success": True,
+        "message": "Routes working",
+        "user_id": user_id,
+        "datasets_count": len(user_datasets),
+        "available_routes": {
+            "ml_routes": "Available",
+            "feature_engineering_routes": "Available", 
+            "main_routes": "Available"
+        }
+    })
 
 @app.route('/api/dataset/<int:dataset_id>/data')
 @login_required

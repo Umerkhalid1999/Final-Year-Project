@@ -31,6 +31,9 @@
         <a href="#"><i class="fas fa-cogs"></i> Data Processing</a>
       </li>
       <li class="nav-item">
+        <a href="/ml"><i class="fas fa-brain"></i> ML Model Selection</a>
+      </li>
+      <li class="nav-item">
         <a href="{{ url_for('ai_assistant_page') }}"><i class="fas fa-robot"></i> AI Assistant</a>
       </li>
       <li class="nav-item">
@@ -113,6 +116,9 @@
                     <li><a class="dropdown-item" href="{{ url_for('summary_statistics', dataset_id=dataset.id) }}"><i class="fas fa-chart-pie me-2"></i>Statistics</a></li>
                     <li><a class="dropdown-item" href="{{ url_for('visualization', dataset_id=dataset.id) }}"><i class="fas fa-chart-bar me-2"></i>Visualize</a></li>
                     <li><a class="dropdown-item" href="{{ url_for('preprocessing_page', dataset_id=dataset.id) }}"><i class="fas fa-cogs me-2"></i>Preprocess</a></li>
+                    <li><a class="dropdown-item" href="/ml/{{ dataset.id }}"><i class="fas fa-brain me-2"></i>ML Selection</a></li>
+                    <li><a class="dropdown-item" href="/workflow/{{ dataset.id }}"><i class="fas fa-project-diagram me-2"></i>Workflow</a></li>
+                    <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item analyze-with-ai" href="#" data-id="{{ dataset.id }}" data-name="{{ dataset.name }}"><i class="fas fa-robot me-2"></i>Analyze with AI</a></li>
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item text-danger delete-dataset" href="#" data-id="{{ dataset.id }}"><i class="fas fa-trash-alt me-2"></i>Delete</a></li>

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JupyterLite - Interactive Notebooks</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        .jupyter-container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .jupyter-frame {
+            width: 100%;
+            height: 800px;
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .info-section {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 20px;
+            color: white;
+            margin-top: 20px;
+        }
+        .info-section h3 {
+            margin-top: 0;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin: 10px 5px;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+        .btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+        }
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #666;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📓 JupyterLite Environment</h1>
+            <p>Interactive Python notebooks in your browser</p>
+        </div>
+
+        <div class="jupyter-container">
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Loading JupyterLite environment...</p>
+                <p><small>This may take a few moments on first load</small></p>
+            </div>
+            <iframe 
+                id="jupyter-frame"
+                class="jupyter-frame" 
+                src="https://jupyterlite.readthedocs.io/en/latest/_static/lab/index.html"
+                style="display: none;"
+                onload="document.getElementById('loading').style.display='none'; this.style.display='block';">
+            </iframe>
+        </div>
+
+        <div class="info-section">
+            <h3>🚀 Getting Started</h3>
+            <p>JupyterLite provides a full Jupyter Lab environment running entirely in your browser. You can:</p>
+            <ul>
+                <li>Create and run Python notebooks</li>
+                <li>Install packages using micropip</li>
+                <li>Import your exported model notebooks</li>
+                <li>Experiment with machine learning models</li>
+            </ul>
+            
+            <h3>📝 How to Import Your Model</h3>
+            <ol>
+                <li>Export your optimized model from the ML Recommender</li>
+                <li>In JupyterLite, click "File" → "Upload"</li>
+                <li>Upload your .ipynb notebook file</li>
+                <li>Open and run the notebook</li>
+            </ol>
+
+            <div style="text-align: center; margin-top: 20px;">
+                <a href="/" class="btn">🔙 Back to Pipeline</a>
+                <a href="https://jupyterlite.readthedocs.io/en/latest/" class="btn" target="_blank">📚 JupyterLite Docs</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Handle iframe loading
+        setTimeout(function() {
+            const loading = document.getElementById('loading');
+            const frame = document.getElementById('jupyter-frame');
+            if (loading.style.display !== 'none') {
+                loading.innerHTML = '<div class="spinner"></div><p>Still loading... JupyterLite is starting up</p>';
+            }
+        }, 5000);
+
+        // Fallback if iframe fails to load
+        setTimeout(function() {
+            const loading = document.getElementById('loading');
+            const frame = document.getElementById('jupyter-frame');
+            if (loading.style.display !== 'none') {
+                loading.innerHTML = '<h3>⚠️ Loading Issue</h3><p>JupyterLite is taking longer than expected. You can:</p><ul><li><a href="https://jupyterlite.readthedocs.io/en/latest/_static/lab/index.html" target="_blank" style="color: #667eea;">Open JupyterLite directly</a></li><li>Try refreshing this page</li><li>Check your internet connection</li></ul>';
+            }
+        }, 15000);
+    </script>
+</body>
+</html>

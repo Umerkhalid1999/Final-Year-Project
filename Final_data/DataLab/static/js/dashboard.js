@@ -107,14 +107,10 @@ function checkAuthState() {
     if (window.firebaseAuth && window.firebaseReady) {
         window.firebaseAuth.onAuthStateChanged(window.firebaseAuth.auth, (user) => {
             if (!user) {
-                // Only redirect if we're on a protected page and base.html hasn't already handled it
-                const currentPath = window.location.pathname;
-                if (currentPath.startsWith('/dashboard') || currentPath.startsWith('/data_')) {
-                    console.log("Dashboard: User not authenticated, redirecting to login");
-                    window.location.href = "/login";
-                }
+                // Don't auto-redirect - let server-side handle authentication
+                console.log("Dashboard: User not authenticated on client-side");
             } else {
-                console.log("Dashboard: User authenticated");
+                console.log("Dashboard: User authenticated on client-side");
             }
         });
     } else if (!window.firebaseAuth) {

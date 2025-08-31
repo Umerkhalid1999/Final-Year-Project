@@ -106,9 +106,30 @@ Final_data/
 
 ## 🚀 Quick Start Scripts
 
-- **Windows**: Run `run_datalab_py310.bat`
-- **PowerShell**: Run `run_datalab_py310.ps1`
-- **Activate Environment**: Run `activate_py310.bat`
+### Run without activation (no .bat/.ps1 required)
+
+- **Option A: Use the project venv directly (PowerShell/CMD)**
+
+  PowerShell:
+  ```powershell
+  & ".\venv310\Scripts\python.exe" ".\Final_data\DataLab\main.py"
+  ```
+
+  CMD:
+  ```cmd
+  .\venv310\Scripts\python.exe .\Final_data\DataLab\main.py
+  ```
+
+- **Option B: Use system Python (ensure deps installed)**
+  ```powershell
+  cd .\Final_data\DataLab
+  python -m pip install -r requirements.txt
+  python .\main.py
+  ```
+
+Notes:
+- You don’t need to activate the virtualenv if you call its `python.exe` directly.
+- If you prefer `flask run`, set `FLASK_APP=main.py` and run from `Final_data/DataLab`.
 
 ## 📝 License
 

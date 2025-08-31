@@ -143,8 +143,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     .then(data => {
                         console.log("Session created:", data);
                         if (data.success) {
-                            // Redirect to dashboard
-                            window.location.href = "/dashboard";
+                            // Redirect to dashboard instead of reloading
+                            console.log("Session successful, redirecting to dashboard");
+                            window.location.href = '/dashboard';
                         } else {
                             throw new Error(data.message || "Failed to create session");
                         }
